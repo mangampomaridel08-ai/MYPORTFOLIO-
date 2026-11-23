@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIASVOTE | Official Global Music Awards & Voting Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        [x-cloak] { display: none !important; }
+        .glow-red { box-shadow: 0 0 25px rgba(225, 29, 72, 0.2); }
+        @keyframes vote-burst {
+            0% { opacity: 0; transform: translateY(10px) scale(0.7); }
+            20% { opacity: 1; transform: translateY(0) scale(1.1); }
+            75% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-38px) scale(1); }
+        }
+        @keyframes vote-card-glow {
+            0%, 100% { box-shadow: 0 0 0 rgba(225, 29, 72, 0); }
+            35% { box-shadow: 0 0 28px rgba(225, 29, 72, 0.45); }
+        }
+        .vote-burst { animation: vote-burst 900ms ease-out forwards; }
+        .vote-card-pulse { animation: vote-card-glow 700ms ease-out; }
+        @media (prefers-reduced-motion: reduce) {
+            .vote-burst, .vote-card-pulse { animation-duration: 1ms; }
+        }
+    </style>
+</head>
+<body class="bg-[#080305] text-slate-100 min-h-screen selection:bg-rose-600 selection:text-white" x-data="votingApp()" x-init="initTimer()">
+
+    <!-- TOP GLOBAL BANNER -->
+    <div class="bg-gradient-to-r from-rose-950 via-red-950 to-rose-950 border-b border-rose-900/40 text-rose-200 text-xs py-2 px-4 text-center font-semibold tracking-wide">
+        🌟 2026 GLOBAL MUSIC AWARDS — OFFICIAL ROUND 1 VOTING IS NOW LIVE WORLDWIDE 🌟
+    </div>
+
+    <!-- HEADER / NAV -->
+    <header class="border-b border-rose-950/60 bg-[#0c0407]/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" @click="currentTab = 'vote'">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-700 via-red-600 to-rose-500 flex items-center justify-center font-black text-xl shadow-lg shadow-rose-900/50 text-white tracking-tighter">BV</div>
+                <div>
+                    <span class="text-lg font-black tracking-wider bg-gradient-to-r from-white via-rose-200 to-rose-400 bg-clip-text text-transparent block">BIASVOTE</span>
+                    <span class="text-[10px] text-rose-400 uppercase tracking-widest font-bold">Global Official</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- User Pass & Hearts Wallet -->
+                <div class="hidden sm:flex items-center gap-3 px-3.5 py-1.5 rounded-2xl bg-[#14060b] border border-rose-900/60 text-xs">
+                    <span class="text-rose-400 font-bold uppercase tracking-wider text-[10px]">VIP Voter Lv.2</span>
+                    <span class="w-px h-3 bg-rose-900/60"></span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-rose-500 text-sm">❤️</span>
+                        <span class="font-black text-white text-sm" x-text="userHearts"></span>
+                    </div>
+                </div>
+
+                <button @click="claimDailyHearts()" :disabled="claimedToday" :class="claimedToday ? 'opacity-40 cursor-not-allowed bg-slate-900 border-slate-800' : 'bg-gradient-to-r from-rose-600 to-red-600 hover:opacity-90 shadow-lg shadow-rose-900/40'" class="px-4 py-2 rounded-xl text-white text-xs font-bold transition-all border border-rose-500/30 flex items-center gap-1.5">
+                    <span>🎁</span>
+                    <span x-text="claimedToday ? 'Daily Claimed' : 'Free Hearts'"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="border-b border-rose-950/40 bg-[#0a0306]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 overflow-x-auto">
+            <button @click="currentTab = 'vote'" :class="currentTab === 'vote' ? 'border-rose-600 text-rose-400 bg-rose-950/20' : 'border-transparent text-slate-400 hover:text-slate-200'" class="py-4 border-b-2 font-bold text-xs uppercase tracking-wider transition-all px-2 whitespace-nowrap flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> Live Ballots
+            </button>
+            <button @click="currentTab = 'leaderboard'" :class="currentTab === 'leaderboard' ? 'border-rose-600 text-rose-400 bg-rose-950/20' : 'border-transparent text-slate-400 hover:text-slate-200'" class="py-4 border-b-2 font-bold text-xs uppercase tracking-wider transition-all px-2 whitespace-nowrap">
+                🏆 Real-Time Global Rankings
+            </button>
+            <button @click="currentTab = 'missions'" :class="currentTab === 'missions' ? 'border-rose-600 text-rose-400 bg-rose-950/20' : 'border-transparent text-slate-400 hover:text-slate-200'" class="py-4 border-b-2 font-bold text-xs uppercase tracking-wider transition-all px-2 whitespace-nowrap">
+                ⭐ Heart Station & Quests
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- TAB 1: LIVE VOTING AWARDS -->
+        <template x-if="currentTab === 'vote'">
+        <div>
+            <!-- HERO BANNER & RUNNING COUNTDOWN -->
+            <div class="relative bg-gradient-to-r from-[#17060c] via-[#1f0810] to-[#120408] border border-rose-900/50 rounded-3xl p-6 sm:p-8 mb-8 overflow-hidden glow-red">
+                <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-rose-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-950/80 border border-rose-800/60 text-rose-300 text-[11px] font-bold uppercase tracking-widest mb-3">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Official Voting Period
+                        </div>
+                        <h1 class="text-3xl sm:text-4xl font-black tracking-tight text-white mb-2" x-text="getCurrentCategoryName()"></h1>
+                    </div>
+
+                    <!-- Running Countdown Box -->
+                    <div class="bg-black/50 border border-rose-900/60 rounded-2xl p-4 text-center min-w-[200px]">
+                        <span class="text-[10px] uppercase font-bold text-rose-400 tracking-widest block mb-1">Round Closes In</span>
+                        <div class="text-xl sm:text-2xl font-black font-mono text-white tracking-wider" x-text="countdownTimer"></div>
+                        <span class="text-[10px] text-slate-500 block mt-1">UTC / Standard Server Time</span>
+                    </div>
+                </div>
+
+                <!-- Category Selector -->
+                <div class="flex flex-wrap gap-2 mt-8 pt-6 border-t border-rose-950/80">
+                    <template x-for="cat in categories" :key="cat.id">
+                        <button @click="selectedCategory = cat.id" :class="selectedCategory === cat.id ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-900/50 font-black' : 'bg-[#0f0408] text-slate-400 border-rose-950 hover:border-rose-800 font-semibold'" class="px-5 py-2.5 rounded-xl text-xs border transition-all" x-text="cat.name"></button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- AVAILABLE HEARTS STATUS BAR FOR VOTING -->
+            <div class="mb-6 flex justify-between items-center bg-[#110509] border border-rose-950/80 px-5 py-3.5 rounded-2xl">
+                <span class="text-xs text-slate-300 font-medium">Your Voting Power Balance:</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-rose-500 text-sm">❤️</span>
+                    <span class="font-black text-rose-400 text-sm" x-text="userHearts + ' Hearts Available'"></span>
+                </div>
+            </div>
+
+            <!-- NOMINEES GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <template x-for="nominee in filteredNominees" :key="nominee.id">
+                    <div class="relative bg-[#110509] border border-rose-950/80 rounded-2xl p-6 hover:border-rose-900/80 transition-all duration-300 flex flex-col justify-between shadow-2xl group" :class="voteEffects.some(effect => effect.nomineeId === nominee.id) ? 'vote-card-pulse border-rose-500' : ''">
+                        <template x-for="effect in voteEffects.filter(effect => effect.nomineeId === nominee.id)" :key="effect.id">
+                            <span class="vote-burst absolute right-6 bottom-20 z-10 rounded-full bg-rose-600 px-3 py-1.5 text-sm font-black text-white shadow-lg shadow-rose-900/50 pointer-events-none" x-text="'+' + effect.amount + ' ❤️'" aria-hidden="true"></span>
+                        </template>
+
+                        <!-- Nominee Header Info -->
+                        <div>
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-16 h-16 rounded-xl bg-gradient-to-tr from-rose-900 to-red-800 border border-rose-700/40 flex items-center justify-center font-black text-white text-base shadow-inner overflow-hidden shrink-0">
+                                        <template x-if="nominee.photo && !nominee.photoFailed">
+                                            <img :src="nominee.photo" :alt="nominee.name" @error="nominee.photoFailed = true" class="w-full h-full object-cover">
+                                        </template>
+                                        <span x-show="!nominee.photo || nominee.photoFailed" x-text="nominee.name.substring(0, 2)"></span>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-black text-white tracking-wide" x-text="nominee.name"></h3>
+                                        <span class="text-[11px] px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 font-semibold border border-rose-900/40 inline-block mt-1" x-text="nominee.fandom"></span>
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-lg bg-rose-600/90 text-white text-xs font-black shadow-lg" x-text="'Rank #' + getNomineeRank(nominee)"></span>
+                            </div>
+
+                            <!-- Votes & Progress Bar -->
+                            <div class="my-6">
+                                <div class="flex justify-between items-baseline mb-2">
+                                    <span class="text-xs text-slate-400">Total Score Share</span>
+                                    <span class="text-xs font-mono text-rose-400 font-bold" x-text="formatVotes(nominee.votes) + ' votes'"></span>
+                                </div>
+                                <div class="w-full bg-rose-950/60 h-2.5 rounded-full overflow-hidden border border-rose-900/40 p-0.5">
+                                    <div class="bg-gradient-to-r from-rose-600 via-red-500 to-rose-400 h-full rounded-full transition-all duration-500" :style="`width: ${getVotePercentage(nominee.votes)}%`"></div>
+                                </div>
+                                <div class="flex justify-between items-center text-[11px] text-slate-400 mt-1.5 font-medium">
+                                    <span>Percentage</span>
+                                    <span class="text-rose-400 font-bold" x-text="getVotePercentage(nominee.votes) + '%'"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Voting Action Buttons -->
+                        <div class="grid grid-cols-2 gap-2.5 pt-4 border-t border-rose-950/60">
+                            <button @click="castVote(nominee, 1)" class="py-3 px-3 rounded-xl bg-rose-950/40 border border-rose-900/70 hover:bg-rose-900/50 font-bold text-xs text-rose-200 transition-all flex items-center justify-center gap-1 active:scale-95">
+                                <span>Vote 1</span> <span class="text-rose-500">❤️</span>
+                            </button>
+                            <button @click="castVote(nominee, 10)" class="py-3 px-3 rounded-xl bg-gradient-to-r from-rose-700 via-red-600 to-rose-600 hover:opacity-95 font-black text-xs text-white shadow-lg shadow-rose-900/40 transition-all flex items-center justify-center gap-1 active:scale-95">
+                                <span>Vote 10</span> <span class="text-amber-300">🔥</span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        </template>
+
+        <!-- TAB 2: REAL-TIME LEADERBOARD -->
+        <template x-if="currentTab === 'leaderboard'">
+        <div class="max-w-3xl mx-auto">
+            <div class="mb-8 text-center">
+                <h2 class="text-3xl font-black mb-2 text-white">Global Real-Time Rankings</h2>
+                <p class="text-xs text-slate-400">Live aggregate scores across all regional voting servers.</p>
+            </div>
+
+            <div class="space-y-3">
+                <template x-for="(nominee, index) in sortedNominees" :key="nominee.id">
+                    <div class="bg-[#110509] border border-rose-950/80 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-xl hover:border-rose-900 transition-all">
+                        <div class="flex items-center gap-4 sm:gap-6">
+                            <span class="w-8 text-center font-black text-lg sm:text-xl font-mono" :class="{
+                                'text-amber-400 drop-shadow': index === 0,
+                                'text-slate-300': index === 1,
+                                'text-amber-700': index === 2,
+                                'text-slate-600': index > 2
+                            }" x-text="String(index + 1).padStart(2, '0')"></span>
+                            <div class="w-16 h-16 rounded-xl bg-rose-950/60 border border-rose-900/50 flex items-center justify-center font-black text-white text-sm overflow-hidden shrink-0">
+                                <template x-if="nominee.photo && !nominee.photoFailed">
+                                    <img :src="nominee.photo" :alt="nominee.name" @error="nominee.photoFailed = true" class="w-full h-full object-cover">
+                                </template>
+                                <span x-show="!nominee.photo || nominee.photoFailed" x-text="nominee.name.substring(0, 2)"></span>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-white text-base tracking-wide" x-text="nominee.name"></h4>
+                                <span class="text-[11px] px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 font-semibold border border-rose-900/40" x-text="nominee.fandom"></span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-base sm:text-lg font-black text-rose-400 font-mono" x-text="formatVotes(nominee.votes)"></span>
+                            <span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold">Total Votes</span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        </template>
+
+        <!-- TAB 3: VOTE ENERGY QUESTS -->
+        <template x-if="currentTab === 'missions'">
+        <div class="max-w-xl mx-auto">
+            <div class="mb-8 text-center">
+                <h2 class="text-3xl font-black mb-2 text-white">Heart Charging Station</h2>
+                <p class="text-xs text-slate-400">Complete official fandom missions to collect free voting hearts daily.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-[#110509] border border-rose-950/80 rounded-2xl p-5 flex items-center justify-between shadow-xl">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-rose-950/60 border border-rose-900/60 flex items-center justify-center text-xl">📅</div>
+                        <div>
+                            <h3 class="font-black text-sm text-white">Daily Attendance Check-in</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Verify your daily presence on the global server.</p>
+                        </div>
+                    </div>
+                    <button @click="claimDailyHearts()" :disabled="claimedToday" :class="claimedToday ? 'opacity-40 cursor-not-allowed bg-slate-900 border-slate-800 text-slate-500' : 'bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-900/40 text-white'" class="px-5 py-2.5 rounded-xl text-xs font-black transition-all border border-rose-500/30 whitespace-nowrap">
+                        <span x-text="claimedToday ? 'Claimed ✅' : '+10 ❤️'"></span>
+                    </button>
+                </div>
+
+                <div class="bg-[#110509] border border-rose-950/80 rounded-2xl p-5 flex items-center justify-between shadow-xl">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-rose-950/60 border border-rose-900/60 flex items-center justify-center text-xl">📺</div>
+                        <div>
+                            <h3 class="font-black text-sm text-white">Watch Global Sponsor Ad</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Support partner broadcast to earn bonus votes.</p>
+                        </div>
+                    </div>
+                    <button @click="earnQuestHearts(15)" class="px-5 py-2.5 rounded-xl bg-rose-950/60 border border-rose-900/70 hover:bg-rose-900/60 text-rose-200 text-xs font-black transition-all whitespace-nowrap">
+                        Watch +15 ❤️
+                    </button>
+                </div>
+
+                <div class="bg-[#110509] border border-rose-950/80 rounded-2xl p-5 flex items-center justify-between shadow-xl">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-rose-950/60 border border-rose-900/60 flex items-center justify-center text-xl">🌐</div>
+                        <div>
+                            <h3 class="font-black text-sm text-white">Share Voting Link</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">Mobilize global fandom networks on social channels.</p>
+                        </div>
+                    </div>
+                    <button @click="earnQuestHearts(25)" class="px-5 py-2.5 rounded-xl bg-rose-950/60 border border-rose-900/70 hover:bg-rose-900/60 text-rose-200 text-xs font-black transition-all whitespace-nowrap">
+                        Share +25 ❤️
+                    </button>
+                </div>
+            </div>
+        </div>
+        </template>
+
+    </main>
+
+    <!-- NOTIFICATION TOAST -->
+    <div x-show="toastMessage" x-transition class="fixed bottom-6 right-6 bg-[#17050a] border border-rose-700/80 text-white px-5 py-4 rounded-2xl shadow-2xl text-xs font-bold z-50 flex items-center gap-3">
+        <span class="text-rose-400 text-base">✨</span>
+        <span x-text="toastMessage"></span>
+    </div>
+
+    <!-- JS LOGIC ENGINE -->
+    <script>
+        function votingApp() {
+            return {
+                currentTab: 'vote',
+                selectedCategory: 'aoty',
+                userHearts: 60,
+                claimedToday: false,
+                toastMessage: '',
+                voteEffects: [],
+                nextVoteEffectId: 0,
+                totalSeconds: 318165, // Starting countdown time (~3 days, 14 hours)
+                countdownTimer: '03D : 14H : 22M : 45S',
+                demoSeconds: 300, // 5 minutes demo duration
+
+                categories: [
+                    { id: 'aoty', name: 'Artist of the Year' },
+                    { id: 'global', name: 'Global Powerhouse' },
+                    { id: 'fanchoice', name: 'Fan Choice Award' }
+                ],
+
+                nominees: [
+                    { id: 1, category: 'aoty', name: 'LNGSHOT', fandom: 'ShotCallers', votes: 142000, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQDB6-XekfLEPNIMxiadQwVF_yi1EHtChC0yVxvz4myJmLs9X5JFtndiEs&s=10', photoFailed: false },
+                    { id: 2, category: 'aoty', name: 'aespa', fandom: 'MY', votes: 215300, photo: 'https://i.guim.co.uk/img/media/a8de6718b357095251d3c3e030b4f08ddbe3c9e5/0_0_6000_3600/master/6000.jpg?width=1200&height=900&quality=85&auto=format&fit=crop&s=bbac5928850fb2fd16a191203fa6a082', photoFailed: false },
+                    { id: 3, category: 'aoty', name: 'SB19', fandom: 'A’TIN', votes: 245000, photo: 'https://www.euphoriazine.com/wp-content/uploads/2025/08/DUNGKA_PR-Photo-3-scaled.jpg', photoFailed: false },
+                    { id: 4, category: 'global', name: 'BINI', fandom: 'Blooms', votes: 198000, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTLmhyJTZsm1JTGKWgURvw_6okRRTy2MrBfEe_wQk0eTkHPD9lTUVqsMAUf&s=10', photoFailed: false },
+                    { id: 5, category: 'global', name: 'Stray Kids', fandom: 'STAY', votes: 230400, photo: 'https://dbkpop.com/wp-content/uploads/2023/05/stray_kids_5_star_teaser_all_group-2000x1600.jpg', photoFailed: false },
+                    { id: 6, category: 'global', name: 'XONARA', fandom: 'Xona', votes: 112000, photo: 'https://assets.billboardphilippines.com/wp-content/uploads/2026/06/bbph-xonara-ppop-featured.jpg', photoFailed: false },
+                    { id: 7, category: 'fanchoice', name: 'BOYNEXTDOOR', fandom: 'ONEDOOR', votes: 135000, photo: 'https://images.squarespace-cdn.com/content/v1/56eb012f27d4bd29de975fae/04566d6b-e7e3-4e9b-9845-95b44bdd6c44/NR_BOYSNEXTDOOR_Header.jpg', photoFailed: false },
+                    { id: 8, category: 'fanchoice', name: 'ALPHADRIVE1', fandom: 'AlphaV', votes: 98000, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR7hqCxZ8gqt45Ad154kAR57KVK2FDHHvZgQ6PyteQIRdX4pGygn7obxvoZ&s=10', photoFailed: false },
+                    { id: 9, category: 'fanchoice', name: 'TWS', fandom: '42', votes: 124000, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_Ofsddi_IzO-1wL7kEXPhnABLg0Kt2bAYgdbwukv-sv_opkM78ZkuFAHW&s=10', photoFailed: false },
+                    { id: 10, category: 'fanchoice', name: 'ATEEZ', fandom: 'ATINY', votes: 187000, photo: 'https://nolae.nl/cdn/shop/articles/ateez-ihr-weg-zum-debut-und-in-die-herzen-der-fans-603519.jpg?v=1629738316', photoFailed: false },
+                    { id: 11, category: 'fanchoice', name: 'AHOF', fandom: 'FOHA', votes: 154000, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsu7PObblaC2pIQEStiyO6dT-hqPAl-Mbw8PDXxmNnRLCITquo_QYC8pA&s=10', photoFailed: false },
+                    { id: 12, category: 'global', name: 'KATSEYE', fandom: 'EYEKONS', votes: 209500, photo: 'https://rankthemag.ph/wp-content/uploads/2026/08/KatseyeBanner.jpg', photoFailed: false },
+                    { id: 13, category: 'aoty', name: 'BTS', fandom: 'ARMY', votes: 262500, photo: 'https://www.rollingstone.com/wp-content/uploads/2026/04/BTS-2026-Cover-Story-Rolling-Stone_.jpg', photoFailed: false }
+                ],
+
+                initTimer() {
+                    setInterval(() => {
+                        if (this.totalSeconds > 0) {
+                            this.totalSeconds--;
+                            let d = Math.floor(this.totalSeconds / (3600 * 24));
+                            let h = Math.floor((this.totalSeconds % (3600 * 24)) / 3600);
+                            let m = Math.floor((this.totalSeconds % 3600) / 60);
+                            let s = this.totalSeconds % 60;
+                            
+                            this.countdownTimer = 
+                                String(d).padStart(2, '0') + 'D : ' + 
+                                String(h).padStart(2, '0') + 'H : ' + 
+                                String(m).padStart(2, '0') + 'M : ' + 
+                                String(s).padStart(2, '0') + 'S';
+                        }
+
+                        if (this.demoSeconds > 0) {
+                            this.demoSeconds--;
+                            this.nominees.forEach(nominee => {
+                                nominee.votes += 1 + Math.floor(Math.random() * 8);
+                            });
+                        }
+                    }, 1000);
+                },
+
+                get filteredNominees() {
+                    return this.nominees.filter(n => n.category === this.selectedCategory);
+                },
+
+                get sortedNominees() {
+                    return [...this.nominees].sort((a, b) => b.votes - a.votes);
+                },
+
+                getCurrentCategoryName() {
+                    let cat = this.categories.find(c => c.id === this.selectedCategory);
+                    return cat ? cat.name : '';
+                },
+
+                formatVotes(num) {
+                    return num.toLocaleString();
+                },
+
+                getVotePercentage(nomineeVotes) {
+                    let categoryTotal = this.filteredNominees.reduce((sum, n) => sum + n.votes, 0);
+                    if (categoryTotal === 0) return 0;
+                    return ((nomineeVotes / categoryTotal) * 100).toFixed(1);
+                },
+
+                getNomineeRank(nominee) {
+                    let sorted = [...this.filteredNominees].sort((a, b) => b.votes - a.votes);
+                    let index = sorted.findIndex(n => n.id === nominee.id);
+                    return index !== -1 ? index + 1 : '-';
+                },
+
+                castVote(nominee, amount) {
+                    if (this.userHearts < amount) {
+                        this.showToast('⚠️ Insufficient voting hearts! Visit Heart Station to charge.');
+                        return;
+                    }
+                    this.userHearts -= amount;
+                    nominee.votes += amount;
+                    const effect = { id: ++this.nextVoteEffectId, nomineeId: nominee.id, amount };
+                    this.voteEffects.push(effect);
+                    setTimeout(() => {
+                        this.voteEffects = this.voteEffects.filter(item => item.id !== effect.id);
+                    }, 950);
+                    this.showToast(`Successfully cast ${amount} ❤️ vote(s) for ${nominee.name}!`);
+                },
+
+                claimDailyHearts() {
+                    if (this.claimedToday) {
+                        this.showToast('⚠️ Daily attendance bonus already claimed today.');
+                        return;
+                    }
+                    this.userHearts += 10;
+                    this.claimedToday = true;
+                    this.showToast('🎁 Successfully claimed +10 daily check-in hearts!');
+                },
+
+                earnQuestHearts(amount) {
+                    this.userHearts += amount;
+                    this.showToast(`⭐ Quest completed! Added +${amount} ❤️ hearts to your account.`);
+                },
+
+                showToast(msg) {
+                    this.toastMessage = msg;
+                    setTimeout(() => {
+                        this.toastMessage = '';
+                    }, 3500);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
